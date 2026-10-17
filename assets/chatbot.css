@@ -1,0 +1,163 @@
+/**
+ * "Ask about Oman" chat inside the contact flyout (includes/class-chatbot.php).
+ * Uses the same tokens as flyout.css (--ts-fl-*), so it follows the Elementor kit colours and fonts.
+ */
+.ts-chat[hidden] {
+	display: none;
+}
+
+.ts-chat__notice {
+	margin: 0 0 12px;
+	color: var(--ts-fl-muted);
+	font-size: 13px;
+	line-height: 1.45;
+}
+
+.ts-chat__log {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	max-height: 280px;
+	min-height: 120px;
+	overflow-y: auto;
+	padding: 4px 2px;
+	margin-bottom: 10px;
+}
+
+.ts-chat__log:focus-visible,
+.ts-chat__form input:focus-visible,
+.ts-chat__send:focus-visible,
+.ts-chat__chip:focus-visible,
+.ts-chat__link:focus-visible {
+	outline: 3px solid var(--ts-fl-accent);
+	outline-offset: 2px;
+}
+
+.ts-chat__msg {
+	max-width: 92%;
+	padding: 10px 12px;
+	border-radius: 14px;
+	font-size: 15px;
+	line-height: 1.45;
+	overflow-wrap: anywhere;
+}
+
+.ts-chat__msg p {
+	margin: 0;
+}
+
+.ts-chat__msg--bot {
+	align-self: flex-start;
+	background: var(--ts-fl-sand);
+	border: 1px solid var(--ts-fl-line);
+}
+
+.ts-chat__msg--user {
+	align-self: flex-end;
+	background: var(--ts-fl-text);
+	color: #FFFFFF;
+}
+
+.ts-chat__msg .ts-chat__small {
+	margin-top: 8px;
+	color: var(--ts-fl-muted);
+	font-size: 13px;
+}
+
+.ts-chat__contact {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	margin-top: 10px;
+}
+
+.ts-chat__link {
+	display: block;
+	width: 100%;
+	padding: 9px 12px;
+	border: 1px solid var(--ts-fl-line);
+	border-radius: 10px;
+	background: #FFFFFF;
+	color: var(--ts-fl-accent-dark);
+	font: 600 14px/1.3 var(--ts-fl-body);
+	text-align: left;
+	text-decoration: none;
+	cursor: pointer;
+	overflow-wrap: anywhere;
+}
+
+.ts-chat__link:hover {
+	border-color: var(--ts-fl-accent);
+}
+
+.ts-chat__chips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	margin-bottom: 10px;
+}
+
+.ts-chat__chip {
+	padding: 7px 11px;
+	border: 1px solid var(--ts-fl-line);
+	border-radius: 999px;
+	background: #FFFFFF;
+	color: var(--ts-fl-text);
+	font: 600 13px/1.2 var(--ts-fl-body);
+	cursor: pointer;
+}
+
+.ts-chat__chip:hover {
+	border-color: var(--ts-fl-accent);
+}
+
+.ts-chat__form {
+	display: flex;
+	gap: 8px;
+}
+
+.ts-chat__form input {
+	flex: 1 1 auto;
+	min-width: 0;
+	padding: 10px 12px;
+	border: 1px solid rgba(56, 37, 32, 0.28);
+	border-radius: 10px;
+	background: #FFFFFF;
+	color: var(--ts-fl-text);
+	font: 400 15px/1.4 var(--ts-fl-body);
+	box-shadow: none;
+}
+
+.ts-chat__send {
+	flex: 0 0 auto;
+	padding: 0 16px;
+	min-height: 44px;
+	border: 0;
+	border-radius: 999px;
+	background: var(--ts-fl-accent);
+	color: #FFFFFF;
+	font: 700 15px/1 var(--ts-fl-body);
+	cursor: pointer;
+}
+
+.ts-chat__send:hover {
+	background: var(--ts-fl-accent-dark);
+}
+
+.ts-chat__sr {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+	clip: rect(0 0 0 0);
+	white-space: nowrap;
+}
+
+.ts-flyout__opt--chat .ts-flyout__ico {
+	background: var(--ts-fl-accent);
+}
+
+/* No JavaScript: the chat cannot work, so its menu entry stays hidden. */
+.ts-flyout:not(.ts-flyout--js) .ts-flyout__opt--chat {
+	display: none;
+}

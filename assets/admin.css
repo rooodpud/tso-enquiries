@@ -1,0 +1,189 @@
+/* TS Enquiries admin screens */
+.ts-enq-muted {
+	color: #646970;
+}
+
+.ts-enq-tag {
+	display: inline-block;
+	padding: 2px 8px;
+	border-radius: 20px;
+	background: #f0f0f1;
+	color: #1d2327;
+	font-size: 12px;
+	font-weight: 600;
+	line-height: 1.6;
+	vertical-align: middle;
+}
+
+.ts-enq-tag--new {
+	background: #fcf0e8;
+	color: #a64410;
+}
+
+.ts-enq-tag--assigned {
+	background: #e7f1fb;
+	color: #0a4b78;
+}
+
+.ts-enq-tag--acknowledged {
+	background: #e7f5e7;
+	color: #1e6b1e;
+}
+
+.ts-enq-tag--closed {
+	background: #f0f0f1;
+	color: #50575e;
+}
+
+.ts-enq-tag--failed {
+	background: #fcecec;
+	color: #8a1f1f;
+}
+
+.ts-enq-admin h1 .ts-enq-tag {
+	margin-left: 8px;
+	font-size: 13px;
+}
+
+.ts-enq-grid {
+	display: grid;
+	grid-template-columns: minmax(0, 1.5fr) minmax(300px, 1fr);
+	gap: 20px;
+	align-items: start;
+	margin-top: 16px;
+}
+
+@media (max-width: 1100px) {
+	.ts-enq-grid {
+		grid-template-columns: minmax(0, 1fr);
+	}
+}
+
+.ts-enq-side {
+	display: flex;
+	flex-direction: column;
+	gap: 20px;
+}
+
+.ts-enq-card {
+	padding: 4px 20px 16px;
+	border: 1px solid #dcdcde;
+	border-radius: 6px;
+	background: #fff;
+}
+
+.ts-enq-card h2 {
+	margin: 16px 0 10px;
+	font-size: 15px;
+}
+
+.ts-enq-table {
+	width: 100%;
+	border-collapse: collapse;
+}
+
+.ts-enq-table th,
+.ts-enq-table td {
+	padding: 9px 10px 9px 0;
+	border-top: 1px solid #f0f0f1;
+	text-align: left;
+	vertical-align: top;
+}
+
+.ts-enq-table th {
+	width: 34%;
+	font-weight: 600;
+	color: #50575e;
+}
+
+.ts-enq-row--message td {
+	white-space: normal;
+	font-size: 14px;
+	line-height: 1.6;
+}
+
+.ts-enq-wide {
+	width: 100%;
+	max-width: 100%;
+}
+
+.ts-enq-sent {
+	color: #1e6b1e;
+	font-weight: 600;
+}
+
+.ts-enq-failed {
+	color: #8a1f1f;
+	font-weight: 600;
+}
+
+.ts-enq-preview pre {
+	max-height: 320px;
+	overflow: auto;
+	padding: 10px;
+	border: 1px solid #f0f0f1;
+	background: #f6f7f7;
+	white-space: pre-wrap;
+	font-size: 12.5px;
+}
+
+.ts-enq-log {
+	margin: 0;
+}
+
+.ts-enq-log li {
+	padding: 6px 0;
+	border-top: 1px solid #f0f0f1;
+}
+
+.ts-enq-log li:first-child {
+	border-top: 0;
+}
+
+.wp-list-table .column-ts_received {
+	width: 12%;
+}
+
+/* 1.1.0: pipeline statuses */
+.ts-enq-tag--in_progress {
+	background: #e8eefc;
+	color: #26409a;
+}
+
+.ts-enq-tag--confirmed {
+	background: #e3f4f4;
+	color: #0b6464;
+}
+
+.ts-enq-tag--booked {
+	background: #eee8fa;
+	color: #52308f;
+}
+
+.ts-enq-tag--payment_received {
+	background: #d9f2d9;
+	color: #145214;
+}
+
+.ts-enq-tag--dropped {
+	background: #f4eee3;
+	color: #6b5314;
+}
+
+.ts-enq-tag--rejected {
+	background: #fcecec;
+	color: #8a1f1f;
+}
+
+/* 1.1.0: Enquiries > Staff */
+.ts-enq-staff-add {
+	margin: 16px 0 20px;
+}
+
+.ts-enq-staff-table {
+	max-width: 760px;
+}
+
+.ts-enq-staff-row input[type="text"] {
+	width: 160px;
+}

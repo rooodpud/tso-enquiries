@@ -1,0 +1,389 @@
+/**
+ * Contact flyout (includes/class-flyout.php). Colours and fonts follow the Elementor kit tokens,
+ * with the design values as fallbacks.
+ */
+.ts-flyout {
+	--ts-fl-bg: #FFFFFF;
+	--ts-fl-text: var(--e-global-color-ts_espresso, #382520);
+	--ts-fl-muted: rgba(56, 37, 32, 0.68);
+	--ts-fl-line: rgba(56, 37, 32, 0.14);
+	--ts-fl-accent: var(--e-global-color-ts_terracotta, #F3692A);
+	--ts-fl-accent-dark: var(--e-global-color-ts_terracotta_dark, #D6521A);
+	--ts-fl-sand: var(--e-global-color-ts_sand, #FBF6EE);
+	--ts-fl-body: var(--e-global-typography-ts_body-font-family, 'Karla'), sans-serif;
+	--ts-fl-head: var(--e-global-typography-ts_heading-font-family, 'Bricolage Grotesque'), sans-serif;
+
+	position: fixed;
+	right: 20px;
+	bottom: 20px;
+	z-index: 99990;
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
+	gap: 12px;
+	font-family: var(--ts-fl-body);
+	font-size: 15px;
+	line-height: 1.5;
+	color: var(--ts-fl-text);
+}
+
+.ts-flyout *,
+.ts-flyout *::before,
+.ts-flyout *::after {
+	box-sizing: border-box;
+}
+
+.ts-flyout p {
+	margin: 0;
+}
+
+/* Toggle button ---------------------------------------------------- */
+.ts-flyout__toggle {
+	display: inline-flex;
+	align-items: center;
+	gap: 10px;
+	min-height: 56px;
+	padding: 0 22px 0 18px;
+	border: 0;
+	border-radius: 999px;
+	background: var(--ts-fl-text);
+	color: #FFFFFF;
+	font: 700 15px/1 var(--ts-fl-body);
+	cursor: pointer;
+	box-shadow: 0 8px 24px rgba(56, 37, 32, 0.3);
+	transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.ts-flyout__toggle:hover,
+.ts-flyout__toggle:focus-visible {
+	background: var(--ts-fl-accent);
+	color: #FFFFFF;
+}
+
+.ts-flyout__toggle:focus-visible,
+.ts-flyout__opt:focus-visible,
+.ts-flyout__back:focus-visible,
+.ts-flyout__submit:focus-visible {
+	outline: 3px solid var(--ts-fl-accent);
+	outline-offset: 3px;
+}
+
+.ts-flyout__toggle-ico {
+	display: inline-flex;
+}
+
+.ts-flyout__toggle-ico--close {
+	display: none;
+}
+
+.ts-flyout.is-open .ts-flyout__toggle-ico--open {
+	display: none;
+}
+
+.ts-flyout.is-open .ts-flyout__toggle-ico--close {
+	display: inline-flex;
+}
+
+/* Panel ------------------------------------------------------------ */
+.ts-flyout__panel {
+	width: 340px;
+	max-width: calc(100vw - 40px);
+	max-height: calc(100vh - 120px);
+	overflow-y: auto;
+	background: var(--ts-fl-bg);
+	border: 1px solid var(--ts-fl-line);
+	border-radius: 18px;
+	box-shadow: 0 18px 48px rgba(56, 37, 32, 0.28);
+	padding: 20px;
+}
+
+/* Closed: panel hidden. Without JavaScript the options stay visible (they are plain links). */
+.ts-flyout--js .ts-flyout__panel {
+	display: none;
+}
+
+.ts-flyout--js.is-open .ts-flyout__panel {
+	display: block;
+	animation: ts-flyout-in 0.18s ease-out;
+}
+
+@keyframes ts-flyout-in {
+	from { opacity: 0; transform: translateY(8px); }
+	to   { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.ts-flyout--js.is-open .ts-flyout__panel { animation: none; }
+	.ts-flyout__toggle { transition: none; }
+}
+
+.ts-flyout:not(.ts-flyout--js) .ts-flyout__opt--form {
+	display: none;
+}
+
+.ts-flyout__title {
+	font-family: var(--ts-fl-head);
+	font-weight: 700;
+	font-size: 20px;
+	line-height: 1.2;
+	margin: 0 0 4px;
+}
+
+.ts-flyout__sub {
+	color: var(--ts-fl-muted);
+	font-size: 14px;
+	margin-bottom: 16px;
+}
+
+.ts-flyout__menu {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: grid;
+	gap: 10px;
+}
+
+.ts-flyout__menu li {
+	margin: 0;
+	padding: 0;
+}
+
+.ts-flyout__opt {
+	display: flex;
+	align-items: center;
+	gap: 14px;
+	width: 100%;
+	padding: 12px 14px;
+	border: 1px solid var(--ts-fl-line);
+	border-radius: 14px;
+	background: var(--ts-fl-sand);
+	color: var(--ts-fl-text);
+	font: inherit;
+	text-align: left;
+	text-decoration: none;
+	cursor: pointer;
+	transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.ts-flyout__opt:hover {
+	border-color: var(--ts-fl-accent);
+	background: #FFFFFF;
+	color: var(--ts-fl-text);
+}
+
+.ts-flyout__ico {
+	flex: 0 0 auto;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 42px;
+	height: 42px;
+	border-radius: 50%;
+	color: #FFFFFF;
+	background: var(--ts-fl-accent);
+}
+
+.ts-flyout__opt--wa .ts-flyout__ico {
+	background: #25D366;
+}
+
+.ts-flyout__opt--call .ts-flyout__ico {
+	background: var(--ts-fl-text);
+}
+
+.ts-flyout__txt {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+}
+
+.ts-flyout__txt strong {
+	font-size: 16px;
+	font-weight: 700;
+	line-height: 1.25;
+}
+
+.ts-flyout__txt span {
+	color: var(--ts-fl-muted);
+	font-size: 14px;
+}
+
+/* Form ------------------------------------------------------------- */
+.ts-flyout__form[hidden],
+.ts-flyout__done[hidden],
+.ts-flyout__err[hidden],
+.ts-flyout__menu[hidden],
+.ts-flyout__head[hidden] {
+	display: none;
+}
+
+.ts-flyout__back {
+	margin: 0 0 12px;
+	padding: 0;
+	border: 0;
+	background: none;
+	color: var(--ts-fl-muted);
+	font: 600 14px/1 var(--ts-fl-body);
+	cursor: pointer;
+}
+
+.ts-flyout__back:hover {
+	color: var(--ts-fl-accent-dark);
+}
+
+.ts-flyout__field {
+	margin-bottom: 12px;
+}
+
+.ts-flyout__field label {
+	display: block;
+	margin-bottom: 4px;
+	font-size: 14px;
+	font-weight: 600;
+}
+
+.ts-flyout__field label em {
+	font-style: normal;
+	font-weight: 400;
+	color: var(--ts-fl-muted);
+}
+
+.ts-flyout__field input[type="text"],
+.ts-flyout__field input[type="email"],
+.ts-flyout__field input[type="tel"],
+.ts-flyout__field textarea {
+	display: block;
+	width: 100%;
+	padding: 10px 12px;
+	border: 1px solid rgba(56, 37, 32, 0.28);
+	border-radius: 10px;
+	background: #FFFFFF;
+	color: var(--ts-fl-text);
+	font: 400 15px/1.4 var(--ts-fl-body);
+	box-shadow: none;
+}
+
+.ts-flyout__field textarea {
+	resize: vertical;
+	min-height: 96px;
+}
+
+.ts-flyout__field input:focus,
+.ts-flyout__field textarea:focus {
+	outline: 2px solid var(--ts-fl-accent);
+	outline-offset: 1px;
+	border-color: var(--ts-fl-accent);
+}
+
+.ts-flyout__field.has-error input,
+.ts-flyout__field.has-error textarea {
+	border-color: #B3261E;
+}
+
+.ts-flyout__field--check label {
+	display: flex;
+	gap: 10px;
+	align-items: flex-start;
+	font-weight: 400;
+	font-size: 13px;
+	line-height: 1.45;
+	color: var(--ts-fl-muted);
+}
+
+.ts-flyout__field--check input {
+	flex: 0 0 auto;
+	width: 18px;
+	height: 18px;
+	margin-top: 1px;
+	accent-color: var(--ts-fl-accent);
+}
+
+.ts-flyout__err {
+	margin-top: 4px;
+	color: #B3261E;
+	font-size: 13px;
+	font-weight: 600;
+}
+
+.ts-flyout__err--form {
+	margin: 0 0 12px;
+}
+
+/* Spam-trap field: off-screen, not display:none (some bots skip hidden fields). */
+.ts-flyout__trap {
+	position: absolute;
+	left: -9999px;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+}
+
+.ts-flyout__submit {
+	display: block;
+	width: 100%;
+	min-height: 48px;
+	padding: 0 20px;
+	border: 0;
+	border-radius: 999px;
+	background: var(--ts-fl-accent);
+	color: #FFFFFF;
+	font: 700 15px/48px var(--ts-fl-body);
+	text-align: center;
+	text-decoration: none;
+	cursor: pointer;
+}
+
+.ts-flyout__submit:hover {
+	background: var(--ts-fl-accent-dark);
+	color: #FFFFFF;
+}
+
+.ts-flyout__submit[disabled] {
+	opacity: 0.7;
+	cursor: wait;
+}
+
+.ts-flyout__note {
+	margin-top: 10px;
+	color: var(--ts-fl-muted);
+	font-size: 13px;
+	text-align: center;
+}
+
+.ts-flyout__done p + p {
+	margin: 8px 0 16px;
+	color: var(--ts-fl-muted);
+}
+
+@media (max-width: 480px) {
+	.ts-flyout {
+		right: 14px;
+		bottom: 14px;
+	}
+
+	.ts-flyout__panel {
+		width: calc(100vw - 28px);
+		max-width: none;
+		max-height: calc(100vh - 100px);
+	}
+
+	/* Round icon-only button on phones: saves screen. The name stays for screen readers. */
+	.ts-flyout__toggle {
+		width: 56px;
+		padding: 0;
+		justify-content: center;
+	}
+
+	.ts-flyout__toggle-label {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		overflow: hidden;
+		clip: rect(0 0 0 0);
+		white-space: nowrap;
+	}
+}
+
+@media print {
+	.ts-flyout { display: none; }
+}
