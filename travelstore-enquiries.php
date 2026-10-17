@@ -2,7 +2,7 @@
 /**
  * Plugin Name: TS Enquiries
  * Description: Saves every enquiry sent with the TS Enquiry Form, emails the office, and lets the team assign each enquiry and send the acknowledgement email with one click (never automatically). Daily summary email.
- * Version:     1.1.1
+ * Version:     1.1.2
  * Author:      Pradeep Hingorani
  * GitHub Plugin URI: https://github.com/rooodpud/tso-enquiries
  * Primary Branch: main
@@ -18,7 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 define( 'TSE_PATH', plugin_dir_path( __FILE__ ) );
 define( 'TSE_URL', plugin_dir_url( __FILE__ ) );
-define( 'TSE_VERSION', '1.1.1' );
+define( 'TSE_VERSION', '1.1.2' );
 
 require_once TSE_PATH . 'includes/class-settings.php';
 require_once TSE_PATH . 'includes/class-store.php';
