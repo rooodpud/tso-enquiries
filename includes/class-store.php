@@ -155,6 +155,8 @@ class Store {
 			update_post_meta( $id, self::META . $key, $value );
 		}
 		self::log( $id, __( 'Enquiry received from the website.', 'travelstore-enquiries' ), false );
+		// 1.3.0: Insights keeps where the visitor came from and adds the enquiry to its tables.
+		do_action( 'ts_enquiry_created', $id, $clean, $source );
 
 		return $id;
 	}

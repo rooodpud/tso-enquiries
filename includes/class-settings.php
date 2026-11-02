@@ -32,6 +32,14 @@ class Settings {
 			'flyout_phone'      => '+968 74100010',
 			'flyout_wa_text'    => __( 'Hello Travel Store Oman, I would like to ask about…', 'travelstore-enquiries' ),
 			'chat_on'           => 'yes',
+			// 1.3.0 Insights.
+			'office_days'       => '0,1,2,3,4',
+			'office_start'      => '9', // Owner 2026-11-02: Sunday to Thursday, 09:00 to 18:00.
+			'office_end'        => '18',
+			'reply_target'      => 'day', // Owner 2026-11-02: first reply within one office day.
+			'stuck_days'        => '7',
+			'lost_reasons'      => implode( "\n", array( __( 'Price', 'travelstore-enquiries' ), __( 'Dates not available', 'travelstore-enquiries' ), __( 'No reply from the guest', 'travelstore-enquiries' ), __( 'Booked elsewhere', 'travelstore-enquiries' ), __( 'Just looking', 'travelstore-enquiries' ), __( 'Not a fit for us', 'travelstore-enquiries' ), __( 'Spam', 'travelstore-enquiries' ) ) ),
+			'weekly_on'         => 'yes',
 		);
 	}
 
@@ -45,6 +53,15 @@ class Settings {
 		$all = self::all();
 
 		return isset( $all[ $key ] ) ? $all[ $key ] : '';
+	}
+
+	/**
+	 * Reasons for losing an enquiry (Settings, one per line), offered when an enquiry finishes without a booking.
+	 */
+	public static function lost_reasons() {
+		$lines = preg_split( '/\r\n|\r|\n/', (string) self::get( 'lost_reasons' ) );
+
+		return array_values( array_unique( array_filter( array_map( 'trim', $lines ), 'strlen' ) ) );
 	}
 
 	/**
@@ -100,7 +117,7 @@ class Settings {
 		foreach ( array( 'ack_subject', 'ack_greeting' ) as $key ) {
 			$out[ $key ] = sanitize_text_field( isset( $input[ $key ] ) ? $input[ $key ] : '' );
 		}
-		foreach ( array( 'ack_mention_staff', 'ack_include_copy', 'digest_on', 'flyout_on', 'chat_on' ) as $key ) {
+		foreach ( array( 'ack_mention_staff', 'ack_include_copy', 'digest_on', 'flyout_on', 'chat_on', 'weekly_on' ) as $key ) {
 			$out[ $key ] = ! empty( $input[ $key ] ) ? 'yes' : '';
 		}
 		foreach ( array( 'flyout_whatsapp', 'flyout_phone', 'flyout_wa_text' ) as $key ) {
@@ -109,8 +126,34 @@ class Settings {
 		$out['flyout_whatsapp'] = preg_replace( '/\D+/', '', $out['flyout_whatsapp'] );
 		$hour               = isset( $input['digest_hour'] ) ? (int) $input['digest_hour'] : 9;
 		$out['digest_hour'] = (string) max( 0, min( 23, $hour ) );
+		// Insights (1.3.0).
+		$days               = isset( $input['office_days'] ) && is_array( $input['office_days'] ) ? array_map( 'intval', $input['office_days'] ) : array();
+		$days               = array_values( array_intersect( range( 0, 6 ), $days ) );
+		$out['office_days'] = $days ? implode( ',', $days ) : (string) self::get( 'office_days' );
+		$start              = isset( $input['office_start'] ) ? max( 0, min( 23, (int) $input['office_start'] ) ) : 8;
+		$end                = isset( $input['office_end'] ) ? max( 1, min( 24, (int) $input['office_end'] ) ) : 17;
+		if ( $end <= $start ) {
+			add_settings_error( self::OPTION, 'office_hours', __( 'The office closing time must be after the opening time, so the previous hours were kept.', 'travelstore-enquiries' ) );
+			$start = (int) self::get( 'office_start' );
+			$end   = (int) self::get( 'office_end' );
+		}
+		$out['office_start'] = (string) $start;
+		$out['office_end']   = (string) $end;
+		$target              = isset( $input['reply_target'] ) ? (string) $input['reply_target'] : 'day';
+		$out['reply_target'] = in_array( $target, array_map( 'strval', self::reply_targets() ), true ) ? $target : 'day';
+		$out['stuck_days']   = (string) ( in_array( (int) ( $input['stuck_days'] ?? 7 ), self::stuck_choices(), true ) ? (int) $input['stuck_days'] : 7 );
+		$out['lost_reasons'] = isset( $input['lost_reasons'] ) ? sanitize_textarea_field( $input['lost_reasons'] ) : (string) self::get( 'lost_reasons' );
 
 		return $out;
+	}
+
+	/** Reply targets on offer, in office hours; 'day' = one office day (the office hours of one day). */
+	public static function reply_targets() {
+		return array( 1, 2, 3, 4, 6, 8, 'day', 12, 16, 24 );
+	}
+
+	public static function stuck_choices() {
+		return array( 3, 5, 7, 10, 14, 21, 30 );
 	}
 
 	/**
@@ -119,6 +162,16 @@ class Settings {
 	public static function settings_changed( $old, $new ) {
 		Digest::unschedule();
 		Digest::schedule();
+		Weekly::reschedule();
+		// New office hours change every reply time: refresh the Insights rows.
+		if ( is_array( $old ) && is_array( $new ) ) {
+			foreach ( array( 'office_days', 'office_start', 'office_end' ) as $key ) {
+				if ( ( $old[ $key ] ?? '' ) !== ( $new[ $key ] ?? '' ) ) {
+					Facts::rebuild_all();
+					break;
+				}
+			}
+		}
 	}
 
 	public static function send_test() {
@@ -241,6 +294,64 @@ class Settings {
 						</p></td>
 					</tr>
 				</table>
+				<h2 id="insights"><?php esc_html_e( 'Insights: office hours, reply target, lost reasons', 'travelstore-enquiries' ); ?></h2>
+				<p><?php esc_html_e( 'Used by Enquiries > Insights. Reply times count office hours only, so an enquiry sent on Friday evening is not late on Saturday.', 'travelstore-enquiries' ); ?></p>
+				<table class="form-table" role="presentation">
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Office days', 'travelstore-enquiries' ); ?></th>
+						<td><fieldset><legend class="screen-reader-text"><?php esc_html_e( 'Office days', 'travelstore-enquiries' ); ?></legend>
+							<?php foreach ( Office::day_names() as $d => $day ) : ?>
+								<label style="margin-right:12px"><input type="checkbox" name="<?php echo esc_attr( $name ); ?>[office_days][]" value="<?php echo esc_attr( $d ); ?>"<?php checked( in_array( $d, Office::days(), true ) ); ?>> <?php echo esc_html( $day ); ?></label>
+							<?php endforeach; ?>
+						</fieldset></td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Office hours', 'travelstore-enquiries' ); ?></th>
+						<td>
+							<label for="ts-office-start" class="screen-reader-text"><?php esc_html_e( 'Opens at', 'travelstore-enquiries' ); ?></label>
+							<select id="ts-office-start" name="<?php echo esc_attr( $name ); ?>[office_start]">
+								<?php for ( $h = 0; $h < 24; $h++ ) : ?>
+									<option value="<?php echo esc_attr( $h ); ?>"<?php selected( (string) $h, (string) $o['office_start'] ); ?>><?php echo esc_html( sprintf( '%02d:00', $h ) ); ?></option>
+								<?php endfor; ?>
+							</select>
+							<?php esc_html_e( 'to', 'travelstore-enquiries' ); ?>
+							<label for="ts-office-end" class="screen-reader-text"><?php esc_html_e( 'Closes at', 'travelstore-enquiries' ); ?></label>
+							<select id="ts-office-end" name="<?php echo esc_attr( $name ); ?>[office_end]">
+								<?php for ( $h = 1; $h <= 24; $h++ ) : ?>
+									<option value="<?php echo esc_attr( $h ); ?>"<?php selected( (string) $h, (string) $o['office_end'] ); ?>><?php echo esc_html( 24 === $h ? '24:00' : sprintf( '%02d:00', $h ) ); ?></option>
+								<?php endfor; ?>
+							</select>
+							<p class="description"><?php echo esc_html( sprintf( __( 'Website time zone: %s.', 'travelstore-enquiries' ), wp_timezone_string() ) ); ?></p>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row"><label for="ts-reply-target"><?php esc_html_e( 'Reply target', 'travelstore-enquiries' ); ?></label></th>
+						<td><select id="ts-reply-target" name="<?php echo esc_attr( $name ); ?>[reply_target]">
+							<?php foreach ( self::reply_targets() as $h ) : ?>
+								<option value="<?php echo esc_attr( $h ); ?>"<?php selected( (string) $h, (string) $o['reply_target'] ); ?>><?php echo esc_html( 'day' === $h ? __( 'Within 1 office day', 'travelstore-enquiries' ) : sprintf( _n( 'Within %d office hour', 'Within %d office hours', $h, 'travelstore-enquiries' ), $h ) ); ?></option>
+							<?php endforeach; ?>
+						</select>
+						<p class="description"><?php esc_html_e( 'An enquiry with no first reply after this is shown as overdue. The first reply is the acknowledgement email or "Mark as replied" on the enquiry, whichever comes first.', 'travelstore-enquiries' ); ?></p></td>
+					</tr>
+					<tr>
+						<th scope="row"><label for="ts-stuck"><?php esc_html_e( 'Stuck after', 'travelstore-enquiries' ); ?></label></th>
+						<td><select id="ts-stuck" name="<?php echo esc_attr( $name ); ?>[stuck_days]">
+							<?php foreach ( self::stuck_choices() as $d ) : ?>
+								<option value="<?php echo esc_attr( $d ); ?>"<?php selected( (string) $d, (string) $o['stuck_days'] ); ?>><?php echo esc_html( sprintf( _n( '%d day without a status change', '%d days without a status change', $d, 'travelstore-enquiries' ), $d ) ); ?></option>
+							<?php endforeach; ?>
+						</select></td>
+					</tr>
+					<tr>
+						<th scope="row"><label for="ts-lost-reasons"><?php esc_html_e( 'Reasons an enquiry is lost', 'travelstore-enquiries' ); ?></label></th>
+						<td><textarea class="regular-text" rows="7" id="ts-lost-reasons" name="<?php echo esc_attr( $name ); ?>[lost_reasons]"><?php echo esc_textarea( $o['lost_reasons'] ); ?></textarea>
+						<p class="description"><?php esc_html_e( 'One reason per line. Offered on an enquiry when its status is Dropped, Rejected by client or Closed. Renaming a reason here does not change enquiries that already have the old one.', 'travelstore-enquiries' ); ?></p></td>
+					</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Weekly summary', 'travelstore-enquiries' ); ?></th>
+						<td><label><input type="checkbox" name="<?php echo esc_attr( $name ); ?>[weekly_on]" value="yes"<?php checked( 'yes', $o['weekly_on'] ); ?>> <?php esc_html_e( 'Yes — every Sunday at the daily summary time, to the daily summary address: what changed last week, the key figures, and who is waiting for a reply', 'travelstore-enquiries' ); ?></label></td>
+					</tr>
+				</table>
+
 				<h2><?php esc_html_e( 'Contact flyout', 'travelstore-enquiries' ); ?></h2>
 				<p><?php esc_html_e( 'The small "Contact us" button at the bottom right of every page: WhatsApp, phone call, and a short enquiry form. Messages from the short form arrive in the Enquiries list as "Quick contact".', 'travelstore-enquiries' ); ?></p>
 				<table class="form-table" role="presentation">

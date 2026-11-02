@@ -129,7 +129,7 @@ class Admin {
 					'<a class="row-title" href="%1$s">%2$s</a>%3$s<br><span class="ts-enq-muted">%4$s</span>',
 					esc_url( Store::view_url( $id ) ),
 					$unread ? '<strong>' . esc_html( (string) Store::get( $id, 'name' ) ) . '</strong>' : esc_html( (string) Store::get( $id, 'name' ) ),
-					$unread ? ' <span class="ts-enq-tag ts-enq-tag--new">' . esc_html__( 'Unread', 'travelstore-enquiries' ) . '</span>' : '',
+					( $unread ? ' <span class="ts-enq-tag ts-enq-tag--new">' . esc_html__( 'Unread', 'travelstore-enquiries' ) . '</span>' : '' ) . ( '1' === (string) Store::get( $id, 'test' ) ? ' <span class="ts-enq-tag">' . esc_html__( 'Test / spam', 'travelstore-enquiries' ) . '</span>' : '' ),
 					esc_html( (string) Store::get( $id, 'email' ) )
 				);
 				break;
@@ -204,6 +204,8 @@ class Admin {
 	public static function bulk_actions( $actions ) {
 		unset( $actions['edit'] );
 		$actions['ts_mark_read'] = __( 'Mark as read', 'travelstore-enquiries' );
+		$actions['ts_test_on']   = __( 'Mark as test or spam (leave out of Insights)', 'travelstore-enquiries' );
+		$actions['ts_test_off']  = __( 'Not a test or spam', 'travelstore-enquiries' );
 		foreach ( Settings::staff() as $name ) {
 			/* translators: %s: staff name. */
 			$actions[ 'ts_assign_' . md5( $name ) ] = sprintf( __( 'Assign to %s', 'travelstore-enquiries' ), $name );
@@ -230,6 +232,16 @@ class Admin {
 			}
 
 			return add_query_arg( 'ts_marked', count( $ids ), $redirect );
+		}
+		if ( 'ts_test_on' === $action || 'ts_test_off' === $action ) {
+			$changed = 0;
+			foreach ( $ids as $id ) {
+				if ( Store::is_enquiry( $id ) && self::set_test( $id, 'ts_test_on' === $action ) ) {
+					++$changed;
+				}
+			}
+
+			return add_query_arg( 'ts_bulk', $changed, $redirect );
 		}
 
 		$statuses = Store::statuses();
@@ -285,6 +297,10 @@ class Admin {
 		if ( ! $screen || 'edit-' . Store::POST_TYPE !== $screen->id ) {
 			return;
 		}
+		$drill = Reports::drill( $_GET ); // phpcs:ignore WordPress.Security.NonceVerification -- read-only filter.
+		if ( null !== $drill ) {
+			echo '<div class="notice notice-info"><p>' . esc_html( sprintf( /* translators: 1: count, 2: description */ _n( 'Showing %1$d enquiry from Insights: %2$s', 'Showing %1$d enquiries from Insights: %2$s', count( $drill[0] ), 'travelstore-enquiries' ), count( $drill[0] ), $drill[1] ) ) . ' &nbsp; <a href="' . esc_url( admin_url( 'edit.php?post_type=' . Store::POST_TYPE ) ) . '">' . esc_html__( 'Show all enquiries', 'travelstore-enquiries' ) . '</a> · <a href="' . esc_url( Reports::page_url( array() ) ) . '">' . esc_html__( 'Back to Insights', 'travelstore-enquiries' ) . '</a></p></div>';
+		}
 		if ( isset( $_GET['ts_marked'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification
 			echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'Marked as read.', 'travelstore-enquiries' ) . '</p></div>';
 		}
@@ -336,6 +352,10 @@ class Admin {
 	public static function apply_filter( $query ) {
 		if ( ! is_admin() || ! $query->is_main_query() || Store::POST_TYPE !== $query->get( 'post_type' ) ) {
 			return;
+		}
+		$drill = Reports::drill( $_GET ); // phpcs:ignore WordPress.Security.NonceVerification -- read-only filter.
+		if ( null !== $drill ) {
+			$query->set( 'post__in', $drill[0] ? $drill[0] : array( 0 ) );
 		}
 		$meta = array();
 		if ( ! empty( $_GET['ts_status'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification
@@ -405,6 +425,12 @@ class Admin {
 		}
 		$ack_at   = (string) Store::get( $id, 'ack_at' );
 		$office   = (string) Store::get( $id, 'office_status' );
+		$reason   = (string) Store::get( $id, 'outcome_reason' );
+		$reasons  = Settings::lost_reasons();
+		if ( '' !== $reason && ! in_array( $reason, $reasons, true ) ) {
+			$reasons[] = $reason; // A reason removed from Settings stays visible on older enquiries.
+		}
+		$replied  = Facts::first_reply_gmt( $id );
 		$rows     = Store::get( $id, 'rows' );
 		$log      = Store::get( $id, 'log' );
 		$msg      = isset( $_GET['ts_msg'] ) ? sanitize_key( wp_unslash( $_GET['ts_msg'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification
@@ -415,6 +441,7 @@ class Admin {
 			'need_staff'  => array( 'error', __( 'Choose who is looking after this enquiry ("Assigned to") before sending the acknowledgement.', 'travelstore-enquiries' ) ),
 			'office_sent' => array( 'success', __( 'The enquiry was emailed to the office again.', 'travelstore-enquiries' ) ),
 			'office_fail' => array( 'error', __( 'The email to the office failed again. See the history below.', 'travelstore-enquiries' ) ),
+			'replied'     => array( 'success', __( 'Saved, and the first reply time was recorded.', 'travelstore-enquiries' ) ),
 		);
 		?>
 		<div class="wrap ts-enq-admin">
@@ -500,12 +527,52 @@ class Admin {
 								<?php endforeach; ?>
 							</select>
 						</p>
+						<p class="ts-enq-reason">
+							<label for="ts-reason"><strong><?php esc_html_e( 'Why it ended without a booking', 'travelstore-enquiries' ); ?></strong></label><br>
+							<select name="outcome_reason" id="ts-reason" class="ts-enq-wide">
+								<option value=""><?php esc_html_e( '— No reason given —', 'travelstore-enquiries' ); ?></option>
+								<?php foreach ( $reasons as $label ) : ?>
+									<option value="<?php echo esc_attr( $label ); ?>"<?php selected( $reason, $label ); ?>><?php echo esc_html( $label ); ?></option>
+								<?php endforeach; ?>
+							</select>
+							<span class="description"><?php esc_html_e( 'For Dropped, Rejected by client, or Closed without a booking. Used in Insights > Pipeline.', 'travelstore-enquiries' ); ?></span>
+						</p>
+						<p>
+							<label for="ts-value"><strong><?php esc_html_e( 'Value (OMR)', 'travelstore-enquiries' ); ?></strong></label><br>
+							<input type="number" name="value_omr" id="ts-value" class="ts-enq-wide" min="0" step="0.001" inputmode="decimal" value="<?php echo esc_attr( (string) Store::get( $id, 'value' ) ); ?>">
+							<span class="description">
+								<?php
+								$auto = '' === (string) Store::get( $id, 'value' ) ? Facts::value( $id, true ) : null;
+								echo esc_html(
+									null !== $auto
+										/* translators: %s: amount */
+										? sprintf( __( 'Empty: the vehicle hire booking\'s own total is used (%s).', 'travelstore-enquiries' ), 'OMR ' . number_format_i18n( $auto, 3 ) )
+										: __( 'The quoted or booked amount. Used in Insights for won value and the open pipeline.', 'travelstore-enquiries' )
+								);
+								?>
+							</span>
+						</p>
+						<p>
+							<label><input type="checkbox" name="is_test" value="1"<?php checked( '1', (string) Store::get( $id, 'test' ) ); ?>> <?php esc_html_e( 'This is a test or spam (leave it out of Insights and the summaries)', 'travelstore-enquiries' ); ?></label>
+						</p>
 						<p>
 							<label for="ts-notes"><strong><?php esc_html_e( 'Internal notes', 'travelstore-enquiries' ); ?></strong></label><br>
 							<textarea name="notes" id="ts-notes" rows="4" class="ts-enq-wide"><?php echo esc_textarea( (string) Store::get( $id, 'notes' ) ); ?></textarea>
 							<span class="description"><?php esc_html_e( 'Only seen here, never sent to the customer.', 'travelstore-enquiries' ); ?></span>
 						</p>
 						<p><button type="submit" name="do" value="save" class="button"><?php esc_html_e( 'Save', 'travelstore-enquiries' ); ?></button></p>
+
+						<hr>
+						<h2><?php esc_html_e( 'First reply', 'travelstore-enquiries' ); ?></h2>
+						<?php if ( $replied ) : ?>
+							<p class="ts-enq-sent">&#10003; <?php echo esc_html( sprintf( /* translators: 1: date, 2: office time */ __( 'Replied %1$s (%2$s after it arrived, counting office hours only).', 'travelstore-enquiries' ), wp_date( 'j M Y, H:i', strtotime( $replied . ' UTC' ) ), Office::duration( Office::minutes_between( strtotime( $post->post_date_gmt . ' UTC' ), strtotime( $replied . ' UTC' ) ) ) ) ); ?></p>
+							<?php if ( '' !== (string) Store::get( $id, 'replied_at' ) ) : ?>
+								<p><button type="submit" name="do" value="unreplied" class="button-link"><?php esc_html_e( 'Undo "Mark as replied"', 'travelstore-enquiries' ); ?></button></p>
+							<?php endif; ?>
+						<?php else : ?>
+							<p><?php esc_html_e( 'Replied by email, phone or WhatsApp? Record it here, so Insights can show how fast the team replies. Sending the acknowledgement email below also counts.', 'travelstore-enquiries' ); ?></p>
+							<p><button type="submit" name="do" value="replied" class="button"><?php esc_html_e( 'Mark as replied now', 'travelstore-enquiries' ); ?></button></p>
+						<?php endif; ?>
 
 						<hr>
 						<h2><?php esc_html_e( 'Acknowledgement email', 'travelstore-enquiries' ); ?></h2>
@@ -548,6 +615,25 @@ class Admin {
 	}
 
 	/**
+	 * Mark or unmark an enquiry as test / spam (left out of Insights and the summaries). @return bool changed.
+	 */
+	public static function set_test( $id, $on ) {
+		$was = '1' === (string) Store::get( $id, 'test' );
+		if ( $was === (bool) $on ) {
+			return false;
+		}
+		if ( $on ) {
+			Store::set( $id, 'test', 1 );
+			Store::log( $id, __( 'Marked as test or spam.', 'travelstore-enquiries' ) );
+		} else {
+			delete_post_meta( $id, Store::META . 'test' );
+			Store::log( $id, __( 'No longer marked as test or spam.', 'travelstore-enquiries' ) );
+		}
+
+		return true;
+	}
+
+	/**
 	 * Save the handling fields, and send the acknowledgement or the office email when asked.
 	 */
 	public static function update() {
@@ -563,6 +649,9 @@ class Admin {
 		$status   = isset( $_POST['status'] ) ? sanitize_key( wp_unslash( $_POST['status'] ) ) : Store::status( $id );
 		$status   = array_key_exists( $status, $statuses ) ? $status : Store::status( $id );
 		$notes    = isset( $_POST['notes'] ) ? sanitize_textarea_field( wp_unslash( $_POST['notes'] ) ) : '';
+		$reason   = isset( $_POST['outcome_reason'] ) ? sanitize_text_field( wp_unslash( $_POST['outcome_reason'] ) ) : '';
+		$value    = isset( $_POST['value_omr'] ) ? trim( sanitize_text_field( wp_unslash( $_POST['value_omr'] ) ) ) : '';
+		$value    = '' !== $value && is_numeric( $value ) && (float) $value >= 0 ? number_format( (float) $value, 3, '.', '' ) : '';
 
 		$old_assigned = (string) Store::get( $id, 'assigned' );
 		$old_status   = Store::status( $id );
@@ -580,7 +669,33 @@ class Admin {
 			Store::log( $id, __( 'Internal notes changed.', 'travelstore-enquiries' ) );
 		}
 
+		self::set_test( $id, ! empty( $_POST['is_test'] ) );
+		if ( $reason !== (string) Store::get( $id, 'outcome_reason' ) ) {
+			Store::set( $id, 'outcome_reason', $reason );
+			Store::log( $id, '' !== $reason ? sprintf( __( 'Reason it ended without a booking: %s.', 'travelstore-enquiries' ), $reason ) : __( 'Reason removed.', 'travelstore-enquiries' ) );
+		}
+
+		if ( $value !== (string) Store::get( $id, 'value' ) ) {
+			if ( '' === $value ) {
+				delete_post_meta( $id, Store::META . 'value' );
+				Store::log( $id, __( 'Value removed.', 'travelstore-enquiries' ) );
+			} else {
+				Store::set( $id, 'value', $value );
+				Store::log( $id, sprintf( __( 'Value: OMR %s.', 'travelstore-enquiries' ), $value ) );
+			}
+		}
+
 		$msg = 'saved';
+		if ( 'replied' === $do && '' === (string) Store::get( $id, 'replied_at' ) ) {
+			Store::set( $id, 'replied_at', current_time( 'mysql', true ) );
+			Store::set( $id, 'replied_by', wp_get_current_user()->display_name );
+			Store::log( $id, __( 'Marked as replied.', 'travelstore-enquiries' ) );
+			$msg = 'replied';
+		} elseif ( 'unreplied' === $do ) {
+			delete_post_meta( $id, Store::META . 'replied_at' );
+			delete_post_meta( $id, Store::META . 'replied_by' );
+			Store::log( $id, __( '"Marked as replied" undone.', 'travelstore-enquiries' ) );
+		}
 		if ( in_array( $do, array( 'ack', 'ack_again' ), true ) ) {
 			if ( '' === $assigned ) {
 				$msg = 'need_staff';

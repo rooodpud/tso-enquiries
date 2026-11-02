@@ -94,6 +94,18 @@ class Digest {
 	}
 
 	private static function query( array $args ) {
+		// 1.3.0: enquiries marked as test or spam are left out.
+		return array_values(
+			array_filter(
+				self::posts( $args ),
+				static function ( $post ) {
+					return '1' !== (string) Store::get( $post->ID, 'test' );
+				}
+			)
+		);
+	}
+
+	private static function posts( array $args ) {
 		return get_posts(
 			array_merge(
 				array(
